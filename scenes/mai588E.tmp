@@ -79,6 +79,7 @@ offset_bottom = 40.0
 
 [node name="PopupMenu" type="PopupMenu" parent="CanvasLayer/Control"]
 position = Vector2i(800, 500)
+visible = true
 
 [node name="CashIcon" type="TextureRect" parent="CanvasLayer/Control"]
 layout_mode = 0
@@ -99,7 +100,6 @@ text = "$10,000"
 label_settings = SubResource("LabelSettings_q176i")
 
 [node name="Button" type="Button" parent="CanvasLayer/Control"]
-visible = false
 layout_mode = 0
 offset_left = 1006.0
 offset_top = 548.0
@@ -116,7 +116,6 @@ offset_bottom = 37.0
 text = "Settings"
 
 [node name="CheckBox" type="CheckBox" parent="CanvasLayer/Control"]
-visible = false
 layout_mode = 0
 offset_right = 24.0
 offset_bottom = 24.0

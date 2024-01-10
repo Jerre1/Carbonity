@@ -4,6 +4,8 @@ extends Node3D
 
 var map:DataMap
 
+var med_carb_label = Label
+
 var index:int = 0 # Index of structure being built
 
 @export var selector:Node3D # The 'cursor'
@@ -11,6 +13,10 @@ var index:int = 0 # Index of structure being built
 @export var view_camera:Camera3D # Used for raycasting mouse
 @export var gridmap:GridMap
 @export var cash_display:Label
+#@export var med_carbs_have
+#@export var big_carbs_have
+
+
 
 var plane:Plane # Used for raycasting mouse
 
@@ -19,8 +25,6 @@ func _ready():
 	map = DataMap.new()
 	plane = Plane(Vector3.UP, Vector3.ZERO)
 	
-	# Create new MeshLibrary dynamically, can also be done in the editor
-	# See: https://docs.godotengine.org/en/stable/tutorials/3d/using_gridmaps.html
 	
 	var mesh_library = MeshLibrary.new()
 	
@@ -36,6 +40,11 @@ func _ready():
 	
 	update_structure()
 	update_cash()
+	action_load()
+	
+	
+	$"../CanvasLayer/Control/MedCarbCount".text = str(map.med_carb_have) + "
+		" + str(map.big_carb_have)
 
 func _process(delta):
 	
@@ -44,8 +53,11 @@ func _process(delta):
 	action_rotate() # Rotates selection 90 degrees
 	action_structure_toggle() # Toggles between structures
 	
-	action_save() # Saving
+	
 	action_load() # Loading
+	action_save() # Saving
+	
+	
 	
 	# Map position based on mouse
 	
@@ -58,7 +70,32 @@ func _process(delta):
 	
 	action_build(gridmap_position)
 	action_demolish(gridmap_position)
+	
+	med_carb_label = map.med_carb_have
+	
 
+
+	if Input.is_action_just_released("med_carb") and map.med_carb_have + map.big_carb_have + 1 < map.storage:
+		map.med_carb_have += 1
+		$"../CanvasLayer/Control/MedCarbCount".text = str(map.med_carb_have) + "
+		" + str(map.big_carb_have)
+		
+		print(str(map.med_carb_have)) 
+		print(map.storage)
+		
+	else:
+	
+		if Input.is_action_just_released("big_carb") and map.med_carb_have + map.big_carb_have < map.storage:
+			map.big_carb_have += 1
+			$"../CanvasLayer/Control/MedCarbCount".text = str(map.med_carb_have) + "
+			" + str(map.big_carb_have)
+			print(str(map.big_carb_have))
+			print(map.storage)
+			
+		else:
+			if Input.is_action_just_released("big_carb") or Input.is_action_just_released("med_carb"):
+				print("no no, big boy. Your storage is unaceptable")
+			
 # Retrieve the mesh from a PackedScene, used for dynamically creating a MeshLibrary
 
 func get_mesh(packed_scene):
@@ -78,16 +115,41 @@ func action_build(gridmap_position):
 	if Input.is_action_just_pressed("build"):
 		
 		var previous_tile = gridmap.get_cell_item(gridmap_position)
-		gridmap.set_cell_item(gridmap_position, index, gridmap.get_orthogonal_index_from_basis(selector.basis))
 		
-		if previous_tile != index:
+		
+		if previous_tile == -1 && index != 15:
+			gridmap.set_cell_item(gridmap_position, index, gridmap.get_orthogonal_index_from_basis(selector.basis))
 			map.cash -= structures[index].price
 			update_cash()
+			
+		var structure = gridmap.get_cell_item(gridmap_position) 
+		if structure == 11:
+			print("le garage est build")
+			map.storage = map.storage + 3
+			print(map.storage)
+			
+		else:
+			if previous_tile == 10:
+				pass
+				# INSERT FABRIEK INTERFACE
+			if previous_tile == 11:
+				print("le garage")
+				
 
 # Demolish (remove) a structure
 
 func action_demolish(gridmap_position):
 	if Input.is_action_just_pressed("demolish"):
+		var structure = gridmap.get_cell_item(gridmap_position)
+		if structure != -1:
+			map.cash += structures[structure].price/2
+			update_cash()
+			
+		if structure == 11:
+			print("Kaboom")
+			map.storage = map.storage - 3
+			print(map.storage)
+			
 		gridmap.set_cell_item(gridmap_position, -1)
 
 # Rotates the 'cursor' 90 degrees
@@ -100,10 +162,10 @@ func action_rotate():
 
 func action_structure_toggle():
 	if Input.is_action_just_pressed("structure_next"):
-		index = wrap(index + 1, 0, structures.size())
+		index = wrap(index + 1, 0, structures.size()+1)
 	
 	if Input.is_action_just_pressed("structure_previous"):
-		index = wrap(index - 1, 0, structures.size())
+		index = wrap(index - 1, 0, structures.size()+1)
 
 	update_structure()
 
@@ -115,17 +177,20 @@ func update_structure():
 		selector_container.remove_child(n)
 		
 	# Create new structure preview in selector
-	var _model = structures[index].model.instantiate()
-	selector_container.add_child(_model)
-	_model.position.y += 0.25
+	if index != 15:
+		var _model = structures[index].model.instantiate()
+		selector_container.add_child(_model)
+		_model.position.y += 0.25
 	
 func update_cash():
 	cash_display.text = "$" + str(map.cash)
 
+
 # Saving/load
 
 func action_save():
-	if Input.is_action_just_pressed("save"):
+	if Input.is_action_just_pressed("save") or Global.autoload:
+
 		print("Saving map...")
 		
 		map.structures.clear()
@@ -140,9 +205,10 @@ func action_save():
 			map.structures.append(data_structure)
 			
 		ResourceSaver.save(map, "user://map.res")
+		Global.autoload = false
 	
 func action_load():
-	if Input.is_action_just_pressed("load"):
+	if Input.is_action_just_pressed("load") or Global.autoload:
 		print("Loading map...")
 		
 		gridmap.clear()
@@ -154,3 +220,30 @@ func action_load():
 			gridmap.set_cell_item(Vector3i(cell.position.x, 0, cell.position.y), cell.structure, cell.orientation)
 			
 		update_cash()
+		Global.autoload = false
+		
+	
+func _on_settings_pressed():
+	Global.autoload = true
+	action_save()
+	Global.autoload = false
+	get_tree().change_scene_to_file("res://scenes/settings.tscn")
+
+func _notification(what):
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		Global.autoload = true
+		action_save()
+		Global.autoload = false
+		get_tree().quit() # default behavior
+
+
+#bouw menu knopje (geil)
+
+#func _on_button_pressed():
+	#$PopupMenu.visible = !$PopupMenu.visible
+	
+var med_carb_have = 0
+
+func medium_carbon_made():
+	if Input.is_action_pressed("med_carb"):
+		med_carb_have += 1

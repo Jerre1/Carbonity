@@ -47,3 +47,5 @@ func _input(event):
 	if event is InputEventMouseMotion:
 		if Input.is_action_pressed("camera_rotate"):
 			camera_rotation += Vector3(0, -event.relative.x / 10, 0)
+
+
